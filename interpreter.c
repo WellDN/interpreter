@@ -5,9 +5,9 @@
 
 #define int long long
 
-enum { LEA, IMM, JMP, CALL, JZ, JNZ, ENT, ADJ, LEV, LI, LC, SI, SC, PUSH,
-       OR, XOR, AND, EQ, NE, LT, GT, LE, GE, SHL, SHR, ADD, SUB, DIV, MUL, MOD,
-       OPEN, READ, CLOS, PRTF, MALC, MSET, MCMP, EXIT };
+enum { LEA, IMM, JMP, JZ, JNZ, ADJ, LI, LC, SI, SC, LEV, ENT, CALL, PUSH,
+    OR, XOR, AND, EQ, NE, LT, GT, LE, GE, SHL, SHR, ADD, SUB, DIV, MUL, MOD,
+    OPEN, READ, CLOS, PRTF, MALC, MSET, MCMP, EXIT };
 
 int token;
 char *src, *old_src;
@@ -39,6 +39,19 @@ void program() {
 }
 
 void eval() {
+    int op, *tmp
+        while(1) {
+            op = *pc++;
+            if (op == IMM) {ax = *pc++;}
+            else if (op == LC) {ax = *(char *) ax;}
+            else if (op == LI) {ax = *(int *) ax;}
+            else if (op == SC) {ax = *(char *) *sp++ = ax;}
+            else if (op == SI) {*(int *) *sp++ = ax;}
+            else if (op == JMP) {pc = (int *)*pc;}
+            else if (op == PUSH) {*--sp = ax;}
+            else if (op == JZ) {pc = ax ? pc + 1 : (int *)*pc;}
+            else if (op == JNZ) {pc = ax ? (int *)*pc : pc + 1;}
+        }
     return 0;
 }
 
@@ -88,7 +101,7 @@ int main(int argc, char **argv) {
     memset(data, 0, poolsize);
     memset(stack, 0, poolsize);
 
-    bp = sp = (int *)((int)(stack + poolsize));
+    bp = sp = (int *)((int)stack + poolsize);
     ax = 0;
 
     program();
