@@ -1,1 +1,1 @@
-interpreter written in C
+C interpreter
