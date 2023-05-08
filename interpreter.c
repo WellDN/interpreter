@@ -38,8 +38,8 @@ void program() {
     }
 }
 
-void eval() {
-    int op, *tmp
+int eval() {
+    int op, *tmp;
         while(1) {
             op = *pc++;
             if (op == IMM) {ax = *pc++;}
@@ -63,7 +63,7 @@ void eval() {
             else if (op == NE) ax = *sp++ != ax;
             else if (op == LT) ax = *sp++ < ax;
             else if (op == GT) ax = *sp++ > ax;
-            else if (op == LE) ax = *sp++ =< ax;
+            else if (op == LE) ax = *sp++ <= ax;
             else if (op == GE) ax = *sp++ >= ax;
             else if (op == SHL) ax = *sp++ << ax;
             else if (op == SHR) ax = *sp++ >> ax;
@@ -72,8 +72,18 @@ void eval() {
             else if (op == SUB) ax = *sp++ - ax;
             else if (op == MUL) ax = *sp++ * ax;
             else if (op == MOD) ax = *sp++ % ax;
+            else if (op == OPEN) {ax = open((char *)sp[1], sp[0]);}
+            else if (op == READ) {ax = read(sp[2], (char *)sp[1], *sp);}
+            else if (op == CLOS) {ax = close(*sp);}
+            else if (op == PRTF) {tmp = sp + pc[1]; ax = printf((char *)tmp[-6], tmp[-5], tmp[-4], tmp[-3], tmp[-2], tmp[-1]);}
+            else if (op == MALC) {ax = (int)malloc(*sp);}
+            else if (op == MSET) {ax = (int)memset((char *)sp[2], sp[1], *sp);}
+            else if (op == MCMP) {ax = memcmp((char *)sp[2], (char *)sp[1], *sp);}
+            else {
+                printf("unknown instruction:%d\n", op);
+                return -1;
+            }
         }
-    return 0;
 }
 
 int main(int argc, char **argv) {
@@ -91,7 +101,7 @@ int main(int argc, char **argv) {
     }
 
     if (!(src = old_src = malloc(poolsize))) {
-        printf("could not malloc(%d)\n", poolsize)
+        printf("could not malloc(%d) for source area\n", poolsize);
             return -1;
     }
 
