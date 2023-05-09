@@ -9,6 +9,11 @@ enum { LEA, IMM, JMP, JZ, JNZ, ADJ, LI, LC, SI, SC, LEV, ENT, CALL, PUSH,
     OR, XOR, AND, EQ, NE, LT, GT, LE, GE, SHL, SHR, ADD, SUB, DIV, MUL, MOD,
     OPEN, READ, CLOS, PRTF, MALC, MSET, MCMP, EXIT };
 
+enum { Num = 128, Fun, Sys, Glo, Loc, Id,
+    Char, Else, Enum, If, Int, Return, Sizeof, While,
+    Assign, Cond, Lor, Lan, Or, Xor, And, Eq, Ne, Lt, Gt, Le, Shl, Shr, Add, Sub, Mod, Div, Inc, Dec, Brak
+};
+
 int token;
 char *src, *old_src;
 int poolsize;
