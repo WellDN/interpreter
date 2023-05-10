@@ -14,6 +14,8 @@ enum { Num = 128, Fun, Sys, Glo, Loc, Id,
     Assign, Cond, Lor, Lan, Or, Xor, And, Eq, Ne, Lt, Gt, Le, Shl, Shr, Add, Sub, Mod, Div, Inc, Dec, Brak
 };
 
+enum { Hash, Token, Name, Type, Class, Value, GType, GClass, GValue };
+
 int token;
 char *src, *old_src;
 int poolsize;
@@ -26,9 +28,38 @@ char *data;
 
 int *pc, *sp, *bp, ax, cycle;
 
+int token_val;
+
+int *current_id,
+    *symbols;
+
 void next() {
-    token = *src++;
-    next();
+    char *last_pos;
+    int hash;
+    while(token == *src) {
+        *src++;
+
+        if (token == '\n') {
+            ++line;
+        }
+        else if (token == '#') {
+            while (*src != 0 && *src != '\n') {
+                src++;
+            }
+        } 
+        else if ((token >= 'a' && token <= 'z') || (token >= 'A' && token <= 'Z') || (token == '_') {
+                last_pos = src - 1;
+                hash = token;
+                while ((*src >= 'a' && *src <= 'z) || (*src >= 'A' && *src <= 'Z') || (*src == '_') {
+                        hash = hash * 2 + *src; //prime number
+                        src++;
+                        }
+                        current_id = symbols;
+
+
+                        }
+    }
+    return;
 }
 
 void expression(int level) {
