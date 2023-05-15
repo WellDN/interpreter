@@ -37,6 +37,10 @@ int *current_id,
 
 int *idmain;
 
+int basetype;
+
+int expr_type;
+
 void next() {
     char *last_pos;
     int hash;
@@ -255,8 +259,7 @@ void expression(int level) {
 void program() {
     next();
     while(token > 0) {
-        printf("token is: %c\n", token);
-        next();
+        global_declaration();
     }
 }
 
@@ -307,6 +310,107 @@ int eval() {
         }
     }
 }
+
+void enum_declaration() {
+    int i;
+    i = 0;
+    while (token != '}') {
+        if (token != Id) {
+            printf("%d: bad enum identifier\n", line, token);
+            exit(-1);
+        }
+        next();
+
+        if (token == Assign) {
+            next();
+            if (token != Num) {
+                printf("%d: bad enum identifier\n", line);
+                exit(-1);
+            }
+            i = token_val;
+            next();
+        }
+        current_id[Class] = Num;
+        current_id[Type] = INT;
+        current_id[Value] = i++;
+
+        if (token == ',') {
+            next();
+        }
+    }
+}
+
+void match(int tk) {
+    if (token == tk) {
+        next();
+    } else {
+        printf("%d: bad expected token\n", line, tk);
+        exit(-1);
+    }
+}
+
+void global_declaration() {
+    int type;
+    int i;
+
+    basetype = INT;
+
+    if (token == Enum) {
+        match(Enum); 
+        if (token != '{') {
+            match(Id);
+        }
+        if (token == '}') {
+            match('{');
+            enum_declaration();
+            match('}');
+        }
+        match(';');
+        return;
+    }
+    
+    if (token == Int) {
+        match(Int);
+    } else if (token == Char) {
+        match(Char);
+        basetype = CHAR;
+    }
+
+    while (token != ';' && token != '}') {
+        type = basetype;
+        while(token == Mul) {
+            match(Mul);
+            type = type + PTR;
+        }
+
+        if (token != Id) {
+            printf("%d: bad global delcaration\n", line);
+            exit(-1);
+        }
+
+        if (current_id[Class]) {
+            prinf("%d: duplicate global declaration\n", line);
+            exit(-1);
+        }
+
+        match(Id);
+        current_id[Type] = type;
+
+        if (token == '(') {
+            current_id[Class] = Fun;
+            current_id[Value] = (int)(text + 1);
+            function_declaration();
+        } else {
+            current_id[Class] = Glo;
+            current_id[Value] = (int)data;
+            dat = data + sizeof(int);
+        }
+        if (token == ',') {
+            match(',');
+        }
+        next();
+    }
+
 
 int main(int argc, char **argv) {
     int i, fd;
