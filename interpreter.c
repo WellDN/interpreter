@@ -41,6 +41,8 @@ int basetype;
 
 int expr_type;
 
+int index_of_bp;
+
 void next() {
     char *last_pos;
     int hash;
@@ -411,6 +413,110 @@ void global_declaration() {
         next();
     }
 
+    void function_declaration() {
+        match('(');
+        function_parameter();
+        match(')');
+        match('{');
+        function_body();
+
+        current_id = symbols;
+        while(current_id[Token]) {
+            if (current_id[Class] == Loc) {
+                current_id[Class] = current_id[GClass]; 
+                current_id[Value] = current_id[GValue]; 
+                current_id[Type] = current_id[GType]; 
+            }
+            current_id = current_id + IdSize;
+        }
+    }
+
+    void function_parameter() {
+        int type;
+        int params;
+        params = 0;
+
+        while(token != ')') {
+            type = INT;
+
+            if (token == Int) {
+                match(Int);
+            } else if (token == Char) {
+                type = CHAR;
+                match(char);
+            }
+
+            while(token == Mul) {
+                match(Mul);
+                type = type + PTR;
+            }
+
+            if (token != Id) {
+                printf("%d: bad parameter declaration\n", line);
+                exit(-1);
+            }
+
+            if (current_id[Class] == Loc) {
+                printf("%d: duplicate parameter declaration\n", line);
+                exit(-1);
+            }
+            match(Id);
+
+            current_id[GClass] = Current_id[Class]; current_[Class] = Loc;
+            current_id[GType] = Current_id[Type];   current_[Type] = type;
+            current_id[GValue] = Current_id[Value]; current_[Value] = params++;
+
+            if (token == ',') {
+                match(',');
+            }
+            index_of_bp = params + 1;
+        }
+    }
+
+    void function_body() {
+        int pos_local;
+        int type;
+        pos_local = index_of_bp;
+
+        while(token == Int || token == Char) {
+            basetype = (token == Int) ? INT : CHAR;
+            match(token);
+
+            while(token != ';') {
+                type = basetype;
+                while(token == Mul) {
+                    match(mul);
+                    type = type + PTR;
+                }
+
+                if (token == Id) {
+                    printf("%d: bad local declaration\n", line);
+                }
+
+                if (current_id[class] == Loc) {
+                    printf("%d: duplicate local declaration\n", line);
+                }
+
+                current_id[GClass] = current_id[Class]; current_id[Class] = Loc;
+                current_id[GType] = current_id[Type]; current_id[Type] = type;
+                current_id[GValue] = current_id[Value]; current_id[Value] ++pos_local;
+
+                if (token == ',') {
+                    match(',');
+                }
+            }
+            match(',');
+        }
+
+        *++text = ENT;
+        *++text = pos_local - index_of_bp;
+
+        while(token == '}') {
+            statement();
+        }
+
+        *++text = LEV;
+    }
 
 int main(int argc, char **argv) {
     int i, fd;
