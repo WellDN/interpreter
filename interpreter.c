@@ -11,7 +11,7 @@ enum { LEA, IMM, JMP, JZ, JNZ, ADJ, LI, LC, SI, SC, LEV, ENT, CALL, PUSH,
 
 enum { Num = 128, Fun, Sys, Glo, Loc, Id,
     Char, Else, Enum, If, Int, Return, Sizeof, While,
-    Assign, Cond, Lor, Lan, Or, Xor, And, Eq, Ne, Lt, Gt, Le, Ge, Shl, Shr, Add, Sub, Mod, Div, Inc, Dec, Brak
+    Assign, Cond, Lor, Lan, Or, Xor, And, Eq, Ne, Lt, Gt, Le, Ge, Shl, Shr, Add, Sub, Mod, Div, Mul, Inc, Dec, Brak
 };
 
 enum { Hash, Token, Name, Type, Class, Value, GType, GClass, GValue, IdSize };
@@ -66,19 +66,19 @@ void next() {
             }
             current_id = symbols;
             while(current_id[Token]) {
-                if (current_id[Hash] == hash && !memcmp((char *)current_id[Name], last_pos, src - last_post)) {
+                if (current_id[Hash] == hash && !memcmp((char *)current_id[Name], last_pos, src - last_pos)) {
                     token = current_id[Token];
                     return;
                 }
                 current_id = current_id + IdSize;
             }
-            current[Name] = (int)last_post;
-            current[Hash] = hash;
+            current_id[Name] = (int)last_pos;
+            current_id[Hash] = hash;
             token = current_id[Token] = Id;
             return;
         }
 
-        else if (token >= '0' && <= '9') {
+        else if (token >= '0' && token <= '9') {
             token_val = token - '0';
             if (token_val > 0) {
                 while(*src >= '0' && *src <= '9') {
@@ -87,7 +87,7 @@ void next() {
             } else {
                 if (*src >= 'x' && *src <= 'X') {
                     token = *src++;
-                    while((token >= 'a' && token <= 'f') || (token >= 'A' && token <= 'F') || (token >= '0' && <= '9')) {
+                    while((token >= 'a' && token <= 'f') || (token >= 'A' && token <= 'F') || (token >= '0' && token <= '9')) {
                         token_val = token_val * 16 + (token & 15) + (token >= 'A' ? 9 : 0);
                         token = *src++;
                     }
@@ -102,7 +102,7 @@ void next() {
         }
 
         else if (token == "" || token == '\'') {
-            last_post = data;
+            last_pos = data;
             while(*src != 0 && *src != token) {
                 token_val = *src++;
                 if (token_val == '\\') {
@@ -118,14 +118,14 @@ void next() {
 
             src++;
             if (token == '"') {
-                token_val = (int)last_post;
+                token_val = (int)last_pos;
             } else {
                 token_val = Num;
             }
             return;
         }
 
-        else if (token '/') {
+        else if (token == '/') {
             if (*src == '/') {
                 while(*src != '0' && *src != '\n') {
                     ++src;
@@ -205,7 +205,7 @@ void next() {
         else if (token == '|') {
             if (*src == '|') {
                 src++;
-                token = Lor
+                token = Lor;
             } else {
                 src++;
                 token = Or;
@@ -255,6 +255,10 @@ void next() {
     }
 }
 void expression(int level) {
+    int tmp;
+    int *id;
+    int *addr;
+
     if (token == Num) {
         match(Num);
 
@@ -284,22 +288,21 @@ void expression(int level) {
             match(Int);
         } else if (token == Char) {
             match(Char);
-            expr_type(Char);
+            expr_type = CHAR;
         }
+        else if (token == Mul) {
+            match(Mul);
+            expr_type = expr_type + PTR;
+        }
+
+        match(')');
+
+        *++text = IMM;
+        *++text = (expr_type == CHAR) ? sizeof(char) : sizeof(int);
+        expr_type = INT;
     }
-    else if (token == Mul) {
-        match(Mul);
-        expr_type = expr_type + PTR;
-    }
-
-    match(')');
-
-    *++text = IMM;
-    *++text = (expr_type == CHAR) ? sizeof(char) : sizeof(int);
-    expr_type = INT;
-
-    else if (token == Id) {
-        match('Id');
+     if (token == Id) {
+        match(Id);
 
         id = current_id;
 
@@ -317,7 +320,7 @@ void expression(int level) {
             }
             match(')');
 
-            if (Id[Class] != Sys) {
+            if (id[Class] != Sys) {
                 *++text = id[Value];
             }
             else if (id[Class] == Fun) {
@@ -337,7 +340,7 @@ void expression(int level) {
         }
         else if (id[Class] == Num) {
             *++text = IMM;
-            *++text = value[Id];
+            *++text = id[Value];
             expr_type = INT;
         }
         else {
@@ -380,7 +383,7 @@ void expression(int level) {
         match(Mul);
         expression(Inc);
 
-        if (exr_type >= PTR) {
+        if (expr_type >= PTR) {
             expr_type = expr_type - PTR;
         } else {
             printf("%d: bad deference\n", line);
@@ -480,7 +483,7 @@ void expression(int level) {
             expression(Assign);
 
             expr_type = tmp;
-            *++type = (expr_type == CHAR) ? SC : SI;
+            *++text = (expr_type == CHAR) ? SC : SI;
         }
 
         else if (token == Cond) {
@@ -568,7 +571,7 @@ void expression(int level) {
         }
 
         else if (token == Brak) {
-            match(brak);
+            match(Brak);
             *++text = PUSH;
             expression(Assign);
             match('[');
@@ -726,7 +729,7 @@ void global_declaration() {
         }
 
         if (current_id[Class]) {
-            prinf("%d: duplicate global declaration\n", line);
+            printf("%d: duplicate global declaration\n", line);
             exit(-1);
         }
 
@@ -747,7 +750,7 @@ void global_declaration() {
         }
         next();
     }
-
+}
     void function_declaration() {
         match('(');
         function_parameter();
@@ -778,7 +781,7 @@ void global_declaration() {
                 match(Int);
             } else if (token == Char) {
                 type = CHAR;
-                match(char);
+                match(Char);
             }
 
             while(token == Mul) {
@@ -797,9 +800,9 @@ void global_declaration() {
             }
             match(Id);
 
-            current_id[GClass] = Current_id[Class]; current_[Class] = Loc;
-            current_id[GType] = Current_id[Type];   current_[Type] = type;
-            current_id[GValue] = Current_id[Value]; current_[Value] = params++;
+            current_id[GClass] = current_id[Class]; current_id[Class] = Loc;
+            current_id[GType] = current_id[Type];   current_id[Type] = type;
+            current_id[GValue] = current_id[Value]; current_id[Value] = params++;
 
             if (token == ',') {
                 match(',');
@@ -820,7 +823,7 @@ void global_declaration() {
             while(token != ';') {
                 type = basetype;
                 while(token == Mul) {
-                    match(mul);
+                    match(Mul);
                     type = type + PTR;
                 }
 
@@ -828,13 +831,13 @@ void global_declaration() {
                     printf("%d: bad local declaration\n", line);
                 }
 
-                if (current_id[class] == Loc) {
+                if (current_id[Class] == Loc) {
                     printf("%d: duplicate local declaration\n", line);
                 }
 
                 current_id[GClass] = current_id[Class]; current_id[Class] = Loc;
                 current_id[GType] = current_id[Type]; current_id[Type] = type;
-                current_id[GValue] = current_id[Value]; current_id[Value] ++pos_local;
+                current_id[GValue] = current_id[Value]; current_id[Value] = ++pos_local;
 
                 if (token == ',') {
                     match(',');
@@ -854,7 +857,7 @@ void global_declaration() {
     }
 
 void statement() {
-    int a*, *b;
+    int *a, *b;
 
     if (token == If) {
         match(If);
@@ -864,9 +867,10 @@ void statement() {
 
         *++text = JZ;
         b = ++text;
-
+    
         statement();
-        else if (token == Else) {
+
+        if (token == Else) {
             match(Else);
             *b = (int)(text + 3);
             *++text = JMP;
@@ -876,7 +880,6 @@ void statement() {
         }
         *b = (int)(text + 1);
     }
-
     else if (token == While) {
         match(While);
 
@@ -920,7 +923,6 @@ void statement() {
         match(';');
     }
 }
-
 
 int main(int argc, char **argv) {
     int i, fd;
