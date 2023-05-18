@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <memory.h>
+#include <stdint.h>
 
-#define int long long
+#define int intptr_t
 
 enum { LEA, IMM, JMP, JZ, JNZ, ADJ, LI, LC, SI, SC, LEV, ENT, CALL, PUSH,
     OR, XOR, AND, EQ, NE, LT, GT, LE, GE, SHL, SHR, ADD, SUB, DIV, MUL, MOD,
@@ -43,11 +44,13 @@ int expr_type;
 
 int index_of_bp;
 
+
 void next() {
     char *last_pos;
     int hash;
+
     while(token == *src) {
-        *src++;
+        ++src;
 
         if (token == '\n') {
             ++line;
@@ -60,7 +63,7 @@ void next() {
         else if ((token >= 'a' && token <= 'z') || (token >= 'A' && token <= 'Z') || (token == '_')) {
             last_pos = src - 1;
             hash = token;
-            while((*src >= 'a' && *src <= 'z') || (*src >= 'A' && *src <= 'Z') || (*src == '_')) {
+            while((*src >= 'a' && *src <= 'z') || (*src >= 'A' && *src <= 'Z') || (*src >= '0' && *src <= '9') || (*src == '_')) {
                 hash = hash * 2 + *src; //prime number
                 src++;
             }
@@ -85,14 +88,14 @@ void next() {
                     token_val = token_val*10 + *src++ - '0';
                 }
             } else {
-                if (*src >= 'x' && *src <= 'X') {
-                    token = *src++;
+                if (*src == 'x' || *src == 'X') {
+                    token = *++src;
                     while((token >= 'a' && token <= 'f') || (token >= 'A' && token <= 'F') || (token >= '0' && token <= '9')) {
                         token_val = token_val * 16 + (token & 15) + (token >= 'A' ? 9 : 0);
-                        token = *src++;
+                        token = *++src;
                     }
                 } else {
-                    while((*src >= '0' && *src <= '7')) {
+                    while(*src >= '0' && *src <= '7') {
                         token_val = token_val * 8 + *src++ - '0';
                     }
                 }
@@ -101,7 +104,7 @@ void next() {
             return;
         }
 
-        else if (token == "" || token == '\'') {
+        else if (token == '"' || token == '\'') {
             last_pos = data;
             while(*src != 0 && *src != token) {
                 token_val = *src++;
@@ -111,7 +114,7 @@ void next() {
                         token_val = '\n';
                     }
                 }
-                if (token_val == '"') {
+                if (token == '"') {
                     *data++ = token_val;
                 }
             }
@@ -127,7 +130,7 @@ void next() {
 
         else if (token == '/') {
             if (*src == '/') {
-                while(*src != '0' && *src != '\n') {
+                while(*src != 0 && *src != '\n') {
                     ++src;
                 }
             } else {
@@ -138,7 +141,7 @@ void next() {
 
         else if (token == '=') {
             if (*src == '=') {
-                src++;
+                src ++;
                 token = Eq;
             } else {
                 token = Assign;
@@ -148,7 +151,7 @@ void next() {
 
         else if (token == '+') {
             if (*src == '+') {
-                src++;
+                src ++;
                 token = Inc;
             } else {
                 token = Add;
@@ -158,7 +161,7 @@ void next() {
 
         else if (token == '-') {
             if (*src == '-') {
-                src++;
+                src ++;
                 token = Dec;
             } else {
                 token = Sub;
@@ -176,13 +179,12 @@ void next() {
 
         else if (token == '<') {
             if (*src == '=') {
-                src++;
+                src ++;
                 token = Le;
             } else if (*src == '<') {
                 src++;
                 token = Shl;
             } else {
-                src++;
                 token = Lt;
             }
             return;
@@ -196,7 +198,6 @@ void next() {
                 src++;
                 token = Shr;
             } else {
-                src++;
                 token = Gt;
             }
             return;
@@ -207,7 +208,6 @@ void next() {
                 src++;
                 token = Lor;
             } else {
-                src++;
                 token = Or;
             }
             return;
@@ -215,10 +215,9 @@ void next() {
 
         else if (token == '&') {
             if (*src == '&') {
-                ++src;
+                src ++;
                 token = Lan;
             } else {
-                src++;
                 token = And;
             }
             return;
@@ -254,10 +253,27 @@ void next() {
         }
     }
 }
+
+
+void match(int tk) {
+    if (token == tk) {
+        next();
+    } else {
+        printf("%d: expected token: %d\n", line, tk);
+        exit(-1);
+    }
+}
+
+
 void expression(int level) {
     int tmp;
     int *id;
     int *addr;
+
+    if (!token) {
+        printf("%d: unexpected token EOF of expression\n", line);
+        exit(-1);
+    }
 
     if (token == Num) {
         match(Num);
@@ -301,7 +317,7 @@ void expression(int level) {
         *++text = (expr_type == CHAR) ? sizeof(char) : sizeof(int);
         expr_type = INT;
     }
-     if (token == Id) {
+    else if (token == Id) {
         match(Id);
 
         id = current_id;
@@ -312,7 +328,7 @@ void expression(int level) {
             while (token != ')') {
                 expression(Assign);
                 *++text = PUSH;
-                tmp++;
+                tmp ++;
 
                 if (token == ',') {
                     match(',');
@@ -320,7 +336,7 @@ void expression(int level) {
             }
             match(')');
 
-            if (id[Class] != Sys) {
+            if (id[Class] == Sys) {
                 *++text = id[Value];
             }
             else if (id[Class] == Fun) {
@@ -357,7 +373,7 @@ void expression(int level) {
                 exit(-1);
             }
             expr_type = id[Type];
-            *++text = (expr_type == Char) ? LC : LI;
+            *++text = (expr_type == CHAR) ? LC : LI;
         }
     }
 
@@ -396,7 +412,7 @@ void expression(int level) {
         match(And);
         expression(Inc);
         if (*text == LC || *text == LI) {
-            text--;
+            text --;
         } else {
             printf("%d: bad adress of\n", line);
             exit(-1);
@@ -408,10 +424,10 @@ void expression(int level) {
         match('!');
         expression(Inc);
 
-        *text++ = PUSH;
-        *text++ = IMM;
-        *text++ = 0;
-        *text++ = EQ;
+        *++text = PUSH;
+        *++text = IMM;
+        *++text = 0;
+        *++text = EQ;
 
         expr_type = INT;
     }
@@ -420,10 +436,10 @@ void expression(int level) {
         match('~');
         expression(Inc);
 
-        *text++ = PUSH;
-        *text++ = IMM;
-        *text++ = -1;
-        *text++ = XOR;
+        *++text = PUSH;
+        *++text = IMM;
+        *++text = -1;
+        *++text = XOR;
 
         expr_type = INT;
     }
@@ -513,6 +529,16 @@ void expression(int level) {
             expr_type = INT;
         }
 
+    
+        else if (token == Or) {
+            match(Or);
+            *++text = PUSH;
+            expression(Xor);
+            *++text = OR;
+            expr_type = INT;
+        }
+
+
         else if (token == Lan) {
             match(Lan);
             *++text = JZ;
@@ -522,11 +548,39 @@ void expression(int level) {
             expr_type = INT;
         }
 
+
         else if (token == Xor) {
             match(Xor);
             *++text = PUSH;
             expression(And);
             *++text = XOR;
+            expr_type = INT;
+        }
+
+
+        else if (token == Eq) {
+            match(Eq);
+            *++text = PUSH;
+            expression(Ne);
+            *++text = EQ;
+            expr_type = INT;
+        }
+
+
+        else if (token == Le) {
+            match(Le);
+            *++text = PUSH;
+            expression(Shl);
+            *++text = LE;
+            expr_type = INT;
+        }
+
+
+        else if (token == Ge) {
+            match(Ge);
+            *++text = PUSH;
+            expression(Shl);
+            *++text = GE;
             expr_type = INT;
         }
 
@@ -558,23 +612,23 @@ void expression(int level) {
                 printf("%d: bad value in increment\n", line);
                 exit(-1);
             }
-        *++text = PUSH;
-        *++text = IMM;
-        *++text = (expr_type > PTR) ? sizeof(int) : sizeof(char);
-        *++text = (token == Inc) ? ADD : SUB;
-        *++text = (expr_type == Char) ? SC : SI;
-        *++text = PUSH;
-        *++text = IMM;
-        *++text = (expr_type == PTR) ? sizeof(int) : sizeof(char);
-        *++text = (token == Inc) ? SUB : ADD;
-        match(token);
+            *++text = PUSH;
+            *++text = IMM;
+            *++text = (expr_type > PTR) ? sizeof(int) : sizeof(char);
+            *++text = (token == Inc) ? ADD : SUB;
+            *++text = (expr_type == CHAR) ? SC : SI;
+            *++text = PUSH;
+            *++text = IMM;
+            *++text = (expr_type > PTR) ? sizeof(int) : sizeof(char);
+            *++text = (token == Inc) ? SUB : ADD;
+            match(token);
         }
 
         else if (token == Brak) {
             match(Brak);
             *++text = PUSH;
             expression(Assign);
-            match('[');
+            match(']');
 
             if (tmp > PTR) {
                 *++text = PUSH;
@@ -588,273 +642,15 @@ void expression(int level) {
             }
             expr_type = tmp - PTR;
             *++text = ADD;
-            *++text = (expr_type == ADD) ? LC : LI;
+            *++text = (expr_type == CHAR) ? LC : LI;
         }
         else {
             printf("%d: compiler error, token = %d\n", line, token);
             exit(-1);
-    }
-    }
-}
-void program() {
-    next();
-    while(token > 0) {
-        global_declaration();
-    }
-}
-
-int eval() {
-    int op, *tmp;
-    while(1) {
-        op = *pc++;
-        if (op == IMM) {ax = *pc++;}
-        else if (op == LC) {ax = *(char *) ax;}
-        else if (op == LI) {ax = *(int *) ax;}
-        else if (op == SC) {ax = *(char *) *sp++ = ax;}
-        else if (op == SI) {*(int *) *sp++ = ax;}
-        else if (op == JMP) {pc = (int *)*pc;}
-        else if (op == PUSH) {*--sp = ax;}
-        else if (op == JZ) {pc = ax ? pc + 1 : (int *)*pc;}
-        else if (op == JNZ) {pc = ax ? (int *)*pc : pc + 1;}
-        else if (op == CALL) {*--sp = (int) (pc+1); pc = (int *)*pc;}
-        else if (op == ENT) {*--sp = (int)bp; bp = sp; sp = sp - *pc++;}
-        else if (op == ADJ) {sp = sp + *pc++;}
-        else if (op == LEV) {sp = bp; bp = (int *)*sp++; pc = (int *)*sp++;}
-        else if (op == LEA) {ax = (int)(bp + *pc++);}
-        else if (op == OR) ax = *sp++ | ax;
-        else if (op == XOR) ax = *sp++ ^ ax;
-        else if (op == AND) ax = *sp++ & ax;
-        else if (op == EQ) ax = *sp++ == ax;
-        else if (op == NE) ax = *sp++ != ax;
-        else if (op == LT) ax = *sp++ < ax;
-        else if (op == GT) ax = *sp++ > ax;
-        else if (op == LE) ax = *sp++ <= ax;
-        else if (op == GE) ax = *sp++ >= ax;
-        else if (op == SHL) ax = *sp++ << ax;
-        else if (op == SHR) ax = *sp++ >> ax;
-        else if (op == ADD) ax = *sp++ + ax;
-        else if (op == DIV) ax = *sp++ / ax;
-        else if (op == SUB) ax = *sp++ - ax;
-        else if (op == MUL) ax = *sp++ * ax;
-        else if (op == MOD) ax = *sp++ % ax;
-        else if (op == OPEN) {ax = open((char *)sp[1], sp[0]);}
-        else if (op == READ) {ax = read(sp[2], (char *)sp[1], *sp);}
-        else if (op == CLOS) {ax = close(*sp);}
-        else if (op == PRTF) {tmp = sp + pc[1]; ax = printf((char *)tmp[-6], tmp[-5], tmp[-4], tmp[-3], tmp[-2], tmp[-1]);}
-        else if (op == MALC) {ax = (int)malloc(*sp);}
-        else if (op == MSET) {ax = (int)memset((char *)sp[2], sp[1], *sp);}
-        else if (op == MCMP) {ax = memcmp((char *)sp[2], (char *)sp[1], *sp);}
-        else {
-            printf("unknown instruction:%d\n", op);
-            return -1;
         }
     }
 }
 
-void enum_declaration() {
-    int i;
-    i = 0;
-    while (token != '}') {
-        if (token != Id) {
-            printf("%d: bad enum identifier\n", line, token);
-            exit(-1);
-        }
-        next();
-
-        if (token == Assign) {
-            next();
-            if (token != Num) {
-                printf("%d: bad enum identifier\n", line);
-                exit(-1);
-            }
-            i = token_val;
-            next();
-        }
-        current_id[Class] = Num;
-        current_id[Type] = INT;
-        current_id[Value] = i++;
-
-        if (token == ',') {
-            next();
-        }
-    }
-}
-
-void match(int tk) {
-    if (token == tk) {
-        next();
-    } else {
-        printf("%d: bad expected token\n", line, tk);
-        exit(-1);
-    }
-}
-
-void global_declaration() {
-    int type;
-    int i;
-
-    basetype = INT;
-
-    if (token == Enum) {
-        match(Enum); 
-        if (token != '{') {
-            match(Id);
-        }
-        if (token == '}') {
-            match('{');
-            enum_declaration();
-            match('}');
-        }
-        match(';');
-        return;
-    }
-    
-    if (token == Int) {
-        match(Int);
-    } else if (token == Char) {
-        match(Char);
-        basetype = CHAR;
-    }
-
-    while (token != ';' && token != '}') {
-        type = basetype;
-        while(token == Mul) {
-            match(Mul);
-            type = type + PTR;
-        }
-
-        if (token != Id) {
-            printf("%d: bad global delcaration\n", line);
-            exit(-1);
-        }
-
-        if (current_id[Class]) {
-            printf("%d: duplicate global declaration\n", line);
-            exit(-1);
-        }
-
-        match(Id);
-        current_id[Type] = type;
-
-        if (token == '(') {
-            current_id[Class] = Fun;
-            current_id[Value] = (int)(text + 1);
-            function_declaration();
-        } else {
-            current_id[Class] = Glo;
-            current_id[Value] = (int)data;
-            data = data + sizeof(int);
-        }
-        if (token == ',') {
-            match(',');
-        }
-        next();
-    }
-}
-    void function_declaration() {
-        match('(');
-        function_parameter();
-        match(')');
-        match('{');
-        function_body();
-
-        current_id = symbols;
-        while(current_id[Token]) {
-            if (current_id[Class] == Loc) {
-                current_id[Class] = current_id[GClass]; 
-                current_id[Value] = current_id[GValue]; 
-                current_id[Type] = current_id[GType]; 
-            }
-            current_id = current_id + IdSize;
-        }
-    }
-
-    void function_parameter() {
-        int type;
-        int params;
-        params = 0;
-
-        while(token != ')') {
-            type = INT;
-
-            if (token == Int) {
-                match(Int);
-            } else if (token == Char) {
-                type = CHAR;
-                match(Char);
-            }
-
-            while(token == Mul) {
-                match(Mul);
-                type = type + PTR;
-            }
-
-            if (token != Id) {
-                printf("%d: bad parameter declaration\n", line);
-                exit(-1);
-            }
-
-            if (current_id[Class] == Loc) {
-                printf("%d: duplicate parameter declaration\n", line);
-                exit(-1);
-            }
-            match(Id);
-
-            current_id[GClass] = current_id[Class]; current_id[Class] = Loc;
-            current_id[GType] = current_id[Type];   current_id[Type] = type;
-            current_id[GValue] = current_id[Value]; current_id[Value] = params++;
-
-            if (token == ',') {
-                match(',');
-            }
-            index_of_bp = params + 1;
-        }
-    }
-
-    void function_body() {
-        int pos_local;
-        int type;
-        pos_local = index_of_bp;
-
-        while(token == Int || token == Char) {
-            basetype = (token == Int) ? INT : CHAR;
-            match(token);
-
-            while(token != ';') {
-                type = basetype;
-                while(token == Mul) {
-                    match(Mul);
-                    type = type + PTR;
-                }
-
-                if (token == Id) {
-                    printf("%d: bad local declaration\n", line);
-                }
-
-                if (current_id[Class] == Loc) {
-                    printf("%d: duplicate local declaration\n", line);
-                }
-
-                current_id[GClass] = current_id[Class]; current_id[Class] = Loc;
-                current_id[GType] = current_id[Type]; current_id[Type] = type;
-                current_id[GValue] = current_id[Value]; current_id[Value] = ++pos_local;
-
-                if (token == ',') {
-                    match(',');
-                }
-            }
-            match(',');
-        }
-
-        *++text = ENT;
-        *++text = pos_local - index_of_bp;
-
-        while(token == '}') {
-            statement();
-        }
-
-        *++text = LEV;
-    }
 
 void statement() {
     int *a, *b;
@@ -867,7 +663,7 @@ void statement() {
 
         *++text = JZ;
         b = ++text;
-    
+
         statement();
 
         if (token == Else) {
@@ -880,6 +676,7 @@ void statement() {
         }
         *b = (int)(text + 1);
     }
+
     else if (token == While) {
         match(While);
 
@@ -924,9 +721,274 @@ void statement() {
     }
 }
 
-int main(int argc, char **argv) {
-    int i, fd;
 
+void enum_declaration() {
+    int i;
+    i = 0;
+    while (token != '}') {
+        if (token != Id) {
+            printf("%d: bad enum identifier %d\n", line, token);
+            exit(-1);
+        }
+        next();
+
+        if (token == Assign) {
+            next();
+            if (token != Num) {
+                printf("%d: bad enum initializer\n", line);
+                exit(-1);
+            }
+            i = token_val;
+            next();
+        }
+        current_id[Class] = Num;
+        current_id[Type] = INT;
+        current_id[Value] = i++;
+
+        if (token == ',') {
+            next();
+        }
+    }
+}
+
+
+void function_parameter() {
+    int type;
+    int params;
+    params = 0;
+
+    while(token != ')') {
+        type = INT;
+
+        if (token == Int) {
+            match(Int);
+        } else if (token == Char) {
+            type = CHAR;
+            match(Char);
+        }
+
+        while(token == Mul) {
+            match(Mul);
+            type = type + PTR;
+        }
+
+        if (token != Id) {
+            printf("%d: bad parameter declaration\n", line);
+            exit(-1);
+        }
+
+        if (current_id[Class] == Loc) {
+            printf("%d: duplicate parameter declaration\n", line);
+            exit(-1);
+        }
+        match(Id);
+
+        current_id[GClass] = current_id[Class]; current_id[Class] = Loc;
+        current_id[GType] = current_id[Type];   current_id[Type] = type;
+        current_id[GValue] = current_id[Value]; current_id[Value] = params++;
+
+        if (token == ',') {
+            match(',');
+        }
+    }
+    index_of_bp = params+1;
+}
+
+
+void function_body() {
+    int pos_local;
+    int type;
+    pos_local = index_of_bp;
+
+    while(token == Int || token == Char) {
+        basetype = (token == Int) ? INT : CHAR;
+        match(token);
+
+        while(token != ';') {
+            type = basetype;
+            while(token == Mul) {
+                match(Mul);
+                type = type + PTR;
+            }
+
+            if (token == Id) {
+                printf("%d: bad local declaration\n", line);
+                exit(-1);
+            }
+
+            if (current_id[Class] == Loc) {
+                printf("%d: duplicate local declaration\n", line);
+                exit(-1);
+            }
+            match(Id);
+
+            current_id[GClass] = current_id[Class]; current_id[Class] = Loc;
+            current_id[GType] = current_id[Type]; current_id[Type] = type;
+            current_id[GValue] = current_id[Value]; current_id[Value] = ++pos_local;
+
+            if (token == ',') {
+                match(',');
+            }
+        }
+        match(';');
+    }
+
+    *++text = ENT;
+    *++text = pos_local - index_of_bp;
+
+    while(token != '}') {
+        statement();
+    }
+
+    *++text = LEV;
+}
+
+
+void function_declaration() {
+    match('(');
+    function_parameter();
+    match(')');
+    match('{');
+    function_body();
+
+    current_id = symbols;
+    while(current_id[Token]) {
+        if (current_id[Class] == Loc) {
+            current_id[Class] = current_id[GClass]; 
+            current_id[Value] = current_id[GValue]; 
+            current_id[Type] = current_id[GType]; 
+        }
+        current_id = current_id + IdSize;
+    }
+}
+
+void global_declaration() {
+    int type;
+    int i;
+
+    basetype = INT;
+
+    if (token == Enum) {
+        match(Enum); 
+        if (token != '{') {
+            match(Id);
+        }
+        if (token == '{') {
+            match('{');
+            enum_declaration();
+            match('}');
+        }
+        match(';');
+        return;
+    }
+
+    if (token == Int) {
+        match(Int);
+    } else if (token == Char) {
+        match(Char);
+        basetype = CHAR;
+    }
+
+    while (token != ';' && token != '}') {
+        type = basetype;
+        while(token == Mul) {
+            match(Mul);
+            type = type + PTR;
+        }
+
+        if (token != Id) {
+            printf("%d: bad global delcaration\n", line);
+            exit(-1);
+        }
+
+        if (current_id[Class]) {
+            printf("%d: duplicate global declaration\n", line);
+            exit(-1);
+        }
+
+        match(Id);
+        current_id[Type] = type;
+
+        if (token == '(') {
+            current_id[Class] = Fun;
+            current_id[Value] = (int)(text + 1);
+            function_declaration();
+        } else {
+            current_id[Class] = Glo;
+            current_id[Value] = (int)data;
+            data = data + sizeof(int);
+        }
+        if (token == ',') {
+            match(',');
+        }
+    }
+    next();
+}
+
+
+void program() {
+    next();
+    while(token > 0) {
+        global_declaration();
+    }
+}
+
+
+int eval() {
+    int op, *tmp;
+    while(1) {
+        op = *pc++;
+        if (op == IMM) {ax = *pc++;}
+        else if (op == LC) {ax = *(char *) ax;}
+        else if (op == LI) {ax = *(int *) ax;}
+        else if (op == SC) {ax = *(char *) *sp++ = ax;}
+        else if (op == SI) {*(int *) *sp++ = ax;}
+        else if (op == JMP) {pc = (int *)*pc;}
+        else if (op == PUSH) {*--sp = ax;}
+        else if (op == JZ) {pc = ax ? pc + 1 : (int *)*pc;}
+        else if (op == JNZ) {pc = ax ? (int *)*pc : pc + 1;}
+        else if (op == CALL) {*--sp = (int) (pc+1); pc = (int *)*pc;}
+        else if (op == ENT) {*--sp = (int)bp; bp = sp; sp = sp - *pc++;}
+        else if (op == ADJ) {sp = sp + *pc++;}
+        else if (op == LEV) {sp = bp; bp = (int *)*sp++; pc = (int *)*sp++;}
+        else if (op == LEA) {ax = (int)(bp + *pc++);}
+        else if (op == OR) ax = *sp++ | ax;
+        else if (op == XOR) ax = *sp++ ^ ax;
+        else if (op == AND) ax = *sp++ & ax;
+        else if (op == EQ) ax = *sp++ == ax;
+        else if (op == NE) ax = *sp++ != ax;
+        else if (op == LT) ax = *sp++ < ax;
+        else if (op == GT) ax = *sp++ > ax;
+        else if (op == LE) ax = *sp++ <= ax;
+        else if (op == GE) ax = *sp++ >= ax;
+        else if (op == SHL) ax = *sp++ << ax;
+        else if (op == SHR) ax = *sp++ >> ax;
+        else if (op == ADD) ax = *sp++ + ax;
+        else if (op == DIV) ax = *sp++ / ax;
+        else if (op == SUB) ax = *sp++ - ax;
+        else if (op == MUL) ax = *sp++ * ax;
+        else if (op == MOD) ax = *sp++ % ax;
+        else if (op == EXIT) { printf("exit(%d)\n", *sp); return *sp;}
+        else if (op == OPEN) { ax = open((char *)sp[1], sp[0]);}
+        else if (op == READ) { ax = read(sp[2], (char *)sp[1], *sp);}
+        else if (op == CLOS) { ax = close(*sp);}
+        else if (op == PRTF) { tmp = sp + pc[1]; ax = printf((char *)tmp[-1], tmp[-2], tmp[-3], tmp[-4], tmp[-5], tmp[-6]);}
+        else if (op == MALC) { ax = (int)malloc(*sp);}
+        else if (op == MSET) { ax = (int)memset((char *)sp[2], sp[1], *sp);}
+        else if (op == MCMP) { ax = memcmp((char *)sp[2], (char *)sp[1], *sp);}
+        else {
+            printf("unknown instruction:%d\n", op);
+            return -1;
+        }
+    }
+}
+
+
+int main(int argc, char **argv)
+{   
+    #define int intptr_t
+
+    int i, fd;
     int *tmp;
 
     argc--;
@@ -935,44 +997,31 @@ int main(int argc, char **argv) {
     poolsize = 256 * 1024;
     line = 1;
 
-    if ((fd = open(*argv, 0)) < 0) {
-        printf("could not open(%s)\n", *argv);
-        return -1;
-    }
-
-    if (!(src = old_src = malloc(poolsize))) {
-        printf("could not malloc(%d) for source area\n", poolsize);
-        return -1;
-    }
-
-    if ((i = read(fd, src, poolsize-1)) <= 0) {
-        printf("read() returned %s\n", i);
-        return -1;
-    }
-
-    src[i] = 0;
-    close(fd);
-
-    program();
 
     if (!(text = old_text = malloc(poolsize))) {
-        printf("could not malloc(%d) find text\n", poolsize);
+        printf("could not malloc(%d) for text area\n", poolsize);
         return -1;
     }
 
     if (!(data = malloc(poolsize))) {
-        printf("could not malloc(%d) find data\n", poolsize);
+        printf("could not malloc(%d) for data area\n", poolsize);
         return -1;
     }
 
     if (!(stack = malloc(poolsize))) {
-        printf("could not malloc(%d) find stack\n", poolsize);
+        printf("could not malloc(%d) for stack area\n", poolsize);
+        return -1;
+    }
+
+    if (!(symbols = malloc(poolsize))) {
+        printf("could not malloc(%d) for symbol area\n", poolsize);
         return -1;
     }
 
     memset(text, 0, poolsize);
     memset(data, 0, poolsize);
     memset(stack, 0, poolsize);
+    memset(symbols, 0, poolsize);
 
     bp = sp = (int *)((int)stack + poolsize);
     ax = 0;
@@ -997,6 +1046,30 @@ int main(int argc, char **argv) {
     next(); current_id[Token] = Char;
     next(); idmain = current_id;
 
+    if ((fd = open(*argv, 0)) < 0) {
+        printf("could not open(%s)\n", *argv);
+        return -1;
+    }
+
+    if (!(src = old_src = malloc(poolsize))) {
+        printf("could not malloc(%d) for source area\n", poolsize);
+        return -1;
+    }
+
+    if ((i = read(fd, src, poolsize-1)) <= 0) {
+        printf("read() returned %d\n", i);
+        return -1;
+    }
+
+    src[i] = 0;
+    close(fd);
+
+    program();
+    
+    if (!(pc = (int *)idmain[Value])) {
+        printf("main() not defined\n");
+        return -1;
+    }
 
     sp = (int *)((int)stack + poolsize);
     *--sp = EXIT;
