@@ -49,7 +49,7 @@ void next() {
     char *last_pos;
     int hash;
 
-    while(token == *src) {
+    while(token = *src) {
         ++src;
 
         if (token == '\n') {
@@ -123,11 +123,11 @@ void next() {
             if (token == '"') {
                 token_val = (int)last_pos;
             } else {
-                token_val = Num;
+                token = Num;
             }
             return;
         }
-
+//
         else if (token == '/') {
             if (*src == '/') {
                 while(*src != 0 && *src != '\n') {
@@ -696,7 +696,7 @@ void statement() {
     else if (token == Return) {
         match(Return);
 
-        if(token == ';') {
+        if(token != ';') {
             expression(Assign);
         }
 
@@ -811,7 +811,7 @@ void function_body() {
                 type = type + PTR;
             }
 
-            if (token == Id) {
+            if (token != Id) {
                 printf("%d: bad local declaration\n", line);
                 exit(-1);
             }
