@@ -96,7 +96,7 @@ void next() {
                     }
                 } else {
                     while(*src >= '0' && *src <= '7') {
-                        token_val = token_val * 8 + *src++ - '0';
+                        token_val = token_val*8 + *src++ - '0';
                     }
                 }
             }
@@ -182,7 +182,7 @@ void next() {
                 src ++;
                 token = Le;
             } else if (*src == '<') {
-                src++;
+                src ++;
                 token = Shl;
             } else {
                 token = Lt;
@@ -192,10 +192,10 @@ void next() {
 
         else if (token == '>') {
             if (*src == '=') {
-                src++;
+                src ++;
                 token = Ge;
             } else if (*src == '>') {
-                src++;
+                src ++;
                 token = Shr;
             } else {
                 token = Gt;
@@ -205,7 +205,7 @@ void next() {
 
         else if (token == '|') {
             if (*src == '|') {
-                src++;
+                src ++;
                 token = Lor;
             } else {
                 token = Or;
@@ -229,22 +229,22 @@ void next() {
         }
 
         else if (token == '%') {
-            token == Mod;
+            token = Mod;
             return;
         }
 
         else if (token == '[') {
-            token == Brak;
+            token = Brak;
             return;
         }
 
         else if (token == '*') {
-            token == Mul;
+            token = Mul;
             return;
         }
 
         else if (token == '?') {
-            token == Cond;
+            token = Cond;
             return;
         }
 
@@ -941,13 +941,13 @@ int eval() {
         if (op == IMM) {ax = *pc++;}
         else if (op == LC) {ax = *(char *) ax;}
         else if (op == LI) {ax = *(int *) ax;}
-        else if (op == SC) {ax = *(char *) *sp++ = ax;}
-        else if (op == SI) {*(int *) *sp++ = ax;}
+        else if (op == SC) {ax = *(char *)*sp++ = ax;}
+        else if (op == SI) {*(int *)*sp++ = ax;}
         else if (op == JMP) {pc = (int *)*pc;}
         else if (op == PUSH) {*--sp = ax;}
         else if (op == JZ) {pc = ax ? pc + 1 : (int *)*pc;}
         else if (op == JNZ) {pc = ax ? (int *)*pc : pc + 1;}
-        else if (op == CALL) {*--sp = (int) (pc+1); pc = (int *)*pc;}
+        else if (op == CALL) {*--sp = (int)(pc+1); pc = (int *)*pc;}
         else if (op == ENT) {*--sp = (int)bp; bp = sp; sp = sp - *pc++;}
         else if (op == ADJ) {sp = sp + *pc++;}
         else if (op == LEV) {sp = bp; bp = (int *)*sp++; pc = (int *)*sp++;}
@@ -1014,7 +1014,7 @@ int main(int argc, char **argv)
     }
 
     if (!(symbols = malloc(poolsize))) {
-        printf("could not malloc(%d) for symbol area\n", poolsize);
+        printf("could not malloc(%d) for symbol table\n", poolsize);
         return -1;
     }
 
