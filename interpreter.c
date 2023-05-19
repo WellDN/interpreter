@@ -486,6 +486,11 @@ void expression(int level) {
         *++text = (tmp == Inc) ? ADD : SUB;
         *++text = (expr_type == CHAR) ? SC : SI;
     }
+    else {
+        printf("%d: bad expression\n", line);
+        exit(-1);
+    }
+}
 
     while(token >= level) {
         tmp = expr_type;
@@ -1026,8 +1031,8 @@ int main(int argc, char **argv)
     bp = sp = (int *)((int)stack + poolsize);
     ax = 0;
 
-    src = "char else if while int return sizeof enum "
-        "open read close printf memset malloc memcmp exit void main";
+    src = "char else enum if int return sizeof while "
+        "open read close printf malloc memset memcmp exit void main";
 
     i = Char;
     while(i <= While) {
