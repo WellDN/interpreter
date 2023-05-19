@@ -127,7 +127,7 @@ void next() {
             }
             return;
         }
-//
+
         else if (token == '/') {
             if (*src == '/') {
                 while(*src != 0 && *src != '\n') {
@@ -486,11 +486,6 @@ void expression(int level) {
         *++text = (tmp == Inc) ? ADD : SUB;
         *++text = (expr_type == CHAR) ? SC : SI;
     }
-    else {
-        printf("%d: bad expression\n", line);
-        exit(-1);
-    }
-}
 
     while(token >= level) {
         tmp = expr_type;
@@ -687,7 +682,7 @@ void statement() {
 
         a = text + 1;
         match('(');
-        statement(Assign);
+        expression(Assign);
         match(')');
         *++text = JZ;
         b = ++text;
@@ -1032,7 +1027,7 @@ int main(int argc, char **argv)
     ax = 0;
 
     src = "char else enum if int return sizeof while "
-        "open read close printf malloc memset memcmp exit void main";
+          "open read close printf malloc memset memcmp exit void main";
 
     i = Char;
     while(i <= While) {
