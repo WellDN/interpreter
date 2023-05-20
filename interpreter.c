@@ -248,7 +248,7 @@ void next() {
             return;
         }
 
-        else if (token == ';' || token == ':' || token == '?' || token == ']' || token == '}' || token == '~' || token == ',' || token == '(' || token == ')') {
+        else if (token == ';' || token == ':' || token == '{' || token == ']' || token == '}' || token == '~' || token == ',' || token == '(' || token == ')') {
             return;
         }
     }
@@ -265,7 +265,7 @@ void match(int tk) {
 }
 
 
-void expression(int level) {
+void expression(int level) {        // <<<<<<<<
     int tmp;
     int *id;
     int *addr;
@@ -306,7 +306,7 @@ void expression(int level) {
             match(Char);
             expr_type = CHAR;
         }
-        else if (token == Mul) {
+        while (token == Mul) {
             match(Mul);
             expr_type = expr_type + PTR;
         }
@@ -448,7 +448,9 @@ void expression(int level) {
         match(Add);
         expression(Inc);
         expr_type = INT;
-    } else if (token == Sub) {
+    }
+
+    else if (token == Sub) {
         match(Sub);
         if (token == Num) {
             *++text = IMM;
@@ -486,10 +488,15 @@ void expression(int level) {
         *++text = (tmp == Inc) ? ADD : SUB;
         *++text = (expr_type == CHAR) ? SC : SI;
     }
+    else {
+        printf("%d: bad expression\n", line);
+        exit(-1);
+    }
 
     while(token >= level) {
         tmp = expr_type;
         if (token == Assign) {
+            match(Assign);
             if (*text == LC || *text == LI) {
                 *text = PUSH;
             } else {
@@ -520,6 +527,30 @@ void expression(int level) {
             *addr = (int)(text + 1);
         }
 
+        else if (token == Sub) {
+            match(Sub);
+            *++text = PUSH;
+            expression(Mul);
+            if (tmp > PTR && tmp == expr_type) {
+                *++text = SUB;
+                *++text = PUSH;
+                *++text = IMM;
+                *++text = sizeof(int);
+                *++text = DIV;
+                expr_type = INT;
+            } else if (tmp > PTR) {
+                *++text = PUSH;
+                *++text = IMM;
+                *++text = sizeof(int);
+                *++text = MUL;
+                *++text = SUB;
+                expr_type = tmp;
+            } else {
+                *++text = SUB;
+                expr_type = tmp;
+            }
+        }
+   
         else if (token == Lor) {
             match(Lor);
             *++text = JNZ;
@@ -599,6 +630,40 @@ void expression(int level) {
             *++text = ADD;
         }
 
+        else if (token == Div) {
+            match(Div);
+            *++text = PUSH;
+            expression(Inc);
+            *++text = DIV;
+            expr_type = tmp;
+        }
+
+        else if (token == Mod) {
+            match(Mod);
+            *++text = PUSH;
+            expression(Inc);
+            *++text = MOD;
+            expr_type = tmp;
+        }
+
+
+        else if (token == Mul) {
+            match(Mul);
+            *++text = PUSH;
+            expression(Inc);
+            *++text = MUL;
+            expr_type = tmp;
+        }
+
+        else if (token == And) {
+            match(And);
+            *++text = PUSH;
+            expression(Eq);
+            *++text = AND;
+            expr_type = INT;
+        }
+
+        // IMPLEMENT THIS!!
         else if (token == Inc || token == Dec) {
             if (*text == LI) {
                 *text = PUSH;
